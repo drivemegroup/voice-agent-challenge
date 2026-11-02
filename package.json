@@ -1,0 +1,9 @@
+{
+  "name": "voice-agent-challenge",
+  "private": true,
+  "scripts": {
+    "start": "docker compose up --build",
+    "stop": "docker compose down",
+    "logs": "docker compose logs -f api"
+  }
+}

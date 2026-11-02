@@ -1,0 +1,45 @@
+name: voice-agent-challenge
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: voice_agent
+      POSTGRES_USER: voice_agent
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-demo-password}
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./db/001-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voice_agent -d voice_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  api:
+    build: ./api
+    environment:
+      PORT: 3000
+      PGHOST: db
+      PGDATABASE: voice_agent
+      PGUSER: voice_agent
+      PGPASSWORD: ${DB_PASSWORD:-local-demo-password}
+      AI_PROVIDER: ${AI_PROVIDER:-demo}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      ENABLE_FAULTS: ${ENABLE_FAULTS:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  web:
+    build: ./web
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  database:
